@@ -2,11 +2,17 @@ import numpy as np
 from agents.common import *
 from typing import Callable, Optional, Tuple
 
-def valid_columns(board: np.ndarray):
+def sorted_valid_columns(board: np.ndarray):
     """
-    Returns an array of columns that may be played into.
+    Returns an array of columns that may be played into that are sorted from middle to outside.
     """
-    return np.where(board[-1,:] == NO_PLAYER)[0]  # check the top row of the board to see where there are open spaces
+    valid_columns = np.where(board[-1,:] == NO_PLAYER)[0]  # check the top row of the board to see where there are open spaces
+    mid = int(np.ceil(len(valid_columns)/2))
+    sorted_valid = np.empty(len(valid_columns))
+    sorted_valid[0::2] = np.flip(valid_columns[:mid])  # construct array that is sequentially sorted from inside to outside
+    sorted_valid[1::2] = valid_columns[mid:]
+
+    return sorted_valid.astype(np.int8)
 
 def connected_n(board: np.ndarray, player: BoardPiece):
 
@@ -39,7 +45,7 @@ def is_terminal_board(board: np.ndarray, player: BoardPiece):
         return False
 
 def alphabeta(board: np.ndarray, player: BoardPiece, depth: np.int8, maximizingPlayer = True, alpha = np.NINF, beta = np.PINF):
-    valid_actions = valid_columns(board)
+    valid_actions = sorted_valid_columns(board)
     best_action = None
     other_player = PLAYER1 if player == PLAYER2 else PLAYER2
 
@@ -73,7 +79,7 @@ def alphabeta(board: np.ndarray, player: BoardPiece, depth: np.int8, maximizingP
 def generate_move_minimax(
     board: np.ndarray, player: BoardPiece, saved_state: Optional[SavedState]
 ) -> Tuple[PlayerAction, Optional[SavedState]]:
-    depth = 4
+    depth = 6
     action, value = alphabeta(board, player, depth, True)
     print('action:', action, 'value: ', value)
     return action, saved_state
