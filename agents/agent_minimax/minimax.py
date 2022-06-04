@@ -2,38 +2,88 @@ import numpy as np
 from agents.common import *
 from typing import Callable, Optional, Tuple
 
+
 def sorted_valid_columns(board: np.ndarray):
     """
     Returns an array of columns that may be played into that are sorted from middle to outside.
     """
-    valid_columns = np.where(board[-1,:] == NO_PLAYER)[0]  # check the top row of the board to see where there are open spaces
-    mid = int(np.ceil(len(valid_columns)/2))
+    valid_columns = np.where(board[-1, :] == NO_PLAYER)[
+        0]  # check the top row of the board to see where there are open spaces
+    mid = int(np.ceil(len(valid_columns) / 2))
     sorted_valid = np.empty(len(valid_columns))
-    sorted_valid[0::2] = np.flip(valid_columns[:mid])  # construct array that is sequentially sorted from inside to outside
+    sorted_valid[0::2] = np.flip(
+        valid_columns[:mid]
+    )  # construct array that is sequentially sorted from inside to outside
     sorted_valid[1::2] = valid_columns[mid:]
 
     return sorted_valid.astype(np.int8)
 
-def connected_n(board: np.ndarray, player: BoardPiece):
 
-    return
+def connected_n(board: np.ndarray,
+                player: BoardPiece,
+                n: np.int8,
+                num_rows=np.int8(6),
+                num_columns=np.int8(7)):
+    """
+    This function breaks down the game board into all possible vertical, horizontal, diagonal and 
+    off-diagonal runs of four spaces. Given a number n and the current board, this function returns 
+    the count of these runs that has the player's pieces n times and the other positions are not filled. 
+    """
+    count_n = 0
+
+    horizontal_kernel = np.ones((1, 4), dtype=np.int8)
+    vertical_kernel = np.ones((4, 1), dtype=np.int8)
+    diagonal_kernel = np.eye(4, dtype=np.int8)
+    off_diagonal_kernel = np.eye(4, dtype=np.int8)[::-1]
+    kernels = [
+        vertical_kernel, horizontal_kernel, off_diagonal_kernel,
+        diagonal_kernel
+    ]
+
+    for kernel in kernels:
+        kernel_width = kernel.shape[1]
+        kernel_height = kernel.shape[0]
+        for i in range(num_rows - kernel_height + 1):
+            for j in range(num_columns - kernel_width + 1):
+                sample_array = board[i:i + kernel_height,
+                                     j:j + kernel_width][np.where(kernel)]
+                if (np.sum(sample_array[sample_array == player])
+                        == player * n) and (len(
+                            sample_array[sample_array == NO_PLAYER]) == 4 - n):
+                    count_n += 1
+    return count_n
+
 
 def heuristic(board: np.ndarray, player: BoardPiece, maximizingPlayer: bool):
     """
-    Returns heuristic score of the current gamestate depending on if the player is maximizing or minimizing.
+    Returns heuristic score of the current gamestate depending on if the player is maximizing or 
+    minimizing. The maximizing and minimizing players's win conditions are prioritized with the highest 
+    absolute score. Next, the heuristic prioritizes a high number of streaks of 3 and subsequently streaks 
+    of 2 given by the connected_n function.
     """
-    heur_value = 0
+    score = 0
     other_player = PLAYER1 if player == PLAYER2 else PLAYER2
 
     if check_end_state(board, player) == GameState.IS_WIN:
-        heur_value += 1000000000
-
-    if check_end_state(board, other_player) == GameState.IS_WIN:
-        heur_value -= 100000000
+        score = 1e10
+    elif check_end_state(board, other_player) == GameState.IS_WIN:
+        score = -1e9
+    possibilities_3_player = connected_n(board, player, 3)
+    if possibilities_3_player > 0:
+        score += 1e8 * possibilities_3_player
+    else:
+        score += 1e5 * connected_n(board, player, 2)
+    possibilities_3_other = connected_n(board, other_player, 3)
+    if possibilities_3_other > 0:
+        score -= 1e8 * possibilities_3_other
+    else:
+        score -= 1e5 * connected_n(board, other_player, 2)
 
     if not maximizingPlayer:
-        heur_value = -heur_value
-    return heur_value
+        score = -score
+
+    return score
+
 
 def is_terminal_board(board: np.ndarray, player: BoardPiece):
     """
@@ -41,45 +91,58 @@ def is_terminal_board(board: np.ndarray, player: BoardPiece):
     """
     if check_end_state(board, player) != GameState.STILL_PLAYING:
         return True
-    else: 
+    else:
         return False
 
-def alphabeta(board: np.ndarray, player: BoardPiece, depth: np.int8, maximizingPlayer = True, alpha = np.NINF, beta = np.PINF):
+
+def alphabeta(board: np.ndarray,
+              player: BoardPiece,
+              depth: np.int8,
+              maximizingPlayer=True,
+              alpha=np.NINF,
+              beta=np.PINF):
+    """
+    Returns the best possible action as defined by a heuristic function. 
+    """
+
     valid_actions = sorted_valid_columns(board)
     best_action = None
     other_player = PLAYER1 if player == PLAYER2 else PLAYER2
 
     if (depth == 0) or (is_terminal_board(board, player)):
-         return -1, heuristic(board, player, maximizingPlayer)
+        return -1, heuristic(board, player, maximizingPlayer)
     if maximizingPlayer:
         value = np.NINF
         for move in valid_actions:
             child = apply_player_action(board, move, player)
-            new_value = alphabeta(child, other_player, depth - 1, False, alpha, beta)[1]
+            new_value = alphabeta(child, other_player, depth - 1, False, alpha,
+                                  beta)[1]
             if new_value > value:
                 best_action = move
                 value = new_value
             if value >= beta:
-                break 
+                break
             alpha = max(alpha, value)
         return best_action, value
     else:
         value = np.PINF
         for move in valid_actions:
             child = apply_player_action(board, move, player)
-            new_value = alphabeta(child, other_player, depth - 1, True, alpha, beta)[1]
+            new_value = alphabeta(child, other_player, depth - 1, True, alpha,
+                                  beta)[1]
             if new_value < value:
                 best_action = move
                 value = new_value
             if value <= alpha:
-                break 
+                break
             beta = min(beta, value)
         return best_action, value
+
 
 def generate_move_minimax(
     board: np.ndarray, player: BoardPiece, saved_state: Optional[SavedState]
 ) -> Tuple[PlayerAction, Optional[SavedState]]:
-    depth = 6
+    depth = 4
     action, value = alphabeta(board, player, depth, True)
     print('action:', action, 'value: ', value)
     return action, saved_state

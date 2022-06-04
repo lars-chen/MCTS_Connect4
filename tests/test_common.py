@@ -3,7 +3,7 @@ from agents.common import PLAYER1, PLAYER2, BoardPiece, NO_PLAYER, GameState, in
 
 
 def test_initialize_game_state():
-    from agents.common import initialize_game_state
+    #from agents.common import initialize_game_state
 
     ret = initialize_game_state()
 
