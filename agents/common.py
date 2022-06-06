@@ -12,14 +12,15 @@ PLAYER1 = BoardPiece(
 PLAYER2 = BoardPiece(
     -1
 )  # board[i, j] == PLAYER2 where player 2 (player to move second) has a piece
+rows = BoardPiece(6)
+columns = BoardPiece(7)
 
 BoardPiecePrint = str  # dtype for string representation of BoardPiece
 NO_PLAYER_PRINT = BoardPiecePrint(' ')
-PLAYER1_PRINT = BoardPiecePrint('X')
+PLAYER1_PRINT = BoardPiecePrint(f'X')
 PLAYER2_PRINT = BoardPiecePrint('O')
 
 PlayerAction = np.int8  # The column to be played
-
 
 class GameState(Enum):
     IS_WIN = 1
@@ -39,7 +40,7 @@ def initialize_game_state() -> np.ndarray:
     """
     Returns an ndarray, shape (6, 7) and data type (dtype) BoardPiece, initialized to 0 (NO_PLAYER).
     """
-    return np.full((6, 7), NO_PLAYER, dtype=BoardPiece)
+    return np.full((rows, columns), NO_PLAYER, dtype=BoardPiece)
 
 
 def pretty_print_board(board: np.ndarray) -> str:
@@ -58,20 +59,20 @@ def pretty_print_board(board: np.ndarray) -> str:
     |==============|
     |0 1 2 3 4 5 6 |
     """
-    board = board[::-1]  # Flip board vertically 
-    pp_board = f"|==============|\n"
+    board = board[::-1] 
+    pp_board = f"|==============|\n"  # add top border of board
     for row in range(board.shape[0]):
         pp_board += f"|" + np.array2string(board[row, :]).replace(
-            '[', '').replace(']', '').replace('-1', PLAYER2_PRINT) + " |\n"
+            '[', '').replace(']', '').replace('-1', PLAYER2_PRINT) + " |\n"  # replace player values with strings: -1 value allows use of convolutions
 
-        if np.any(board[row, :] == PLAYER2):
+        if np.any(board[row, :] == PLAYER2):  # handle both -1 and 1 cases, since -1 is two characters
             pp_board = pp_board.replace(' 0', NO_PLAYER_PRINT).replace(
                 ' 1', PLAYER1_PRINT)
         else:
             pp_board = pp_board.replace('0', NO_PLAYER_PRINT).replace(
                 '1', PLAYER1_PRINT)
 
-    pp_board += f"|==============|\n|0 1 2 3 4 5 6 |"
+    pp_board += f"|==============|\n|0 1 2 3 4 5 6 |"  # add bottom border
     return pp_board
 
 
@@ -86,8 +87,8 @@ def string_to_board(pp_board: str) -> np.ndarray:
         PLAYER1 if board[i] == PLAYER1_PRINT else  # retrieve player values from string board
         PLAYER2 if board[i] == PLAYER2_PRINT else NO_PLAYER
         for i in range(len(board))
-    ], (6, 7))
-    return board
+    ], (rows, columns))
+    return board[::-1]
 
 
 def apply_player_action(board: np.ndarray, action: PlayerAction,
@@ -99,14 +100,15 @@ def apply_player_action(board: np.ndarray, action: PlayerAction,
     back or copied beforehand).
     """
 
-    if action > 6 or action < 0:
+    if action > columns - 1 or action < 0:
         raise ValueError('Action outside of board.')
 
     if ~np.any(board[:, action] == NO_PLAYER):
         raise ValueError('Column is already full.')
+
     modified_board = board.copy()
-    for i in range(6 + 1):
-        if modified_board[:, action][i] == NO_PLAYER:
+    for i in range(rows):
+        if modified_board[:, action][i] == NO_PLAYER:  # find first non-filled space in column
             modified_board[:, action][i] = player
             break
 
@@ -118,17 +120,19 @@ def connected_four(board: np.ndarray, player: BoardPiece) -> bool:
     Returns True if there are four adjacent pieces equal to `player` arranged
     in either a horizontal, vertical, or diagonal line. Returns False otherwise.
     """
-    straight_kernel = np.ones((4, 1), dtype=BoardPiece)
+    vertical_kernel = np.ones((4, 1), dtype=BoardPiece)
+    horizontal_kernel = np.ones((1, 4), dtype=BoardPiece)
     diagonal_kernel = np.eye(4, dtype=BoardPiece)
+    off_diagonal_kernel = np.eye(4, dtype=BoardPiece)[::-1]
 
     is_win = False
-    if np.any(signal.convolve2d(board, straight_kernel, 'same') == player * 4):
+    if np.any(signal.convolve2d(board, vertical_kernel, 'same') == player * 4):
         is_win = True
-    elif np.any(signal.convolve2d(board, straight_kernel.T, 'same') == player * 4):
+    elif np.any(signal.convolve2d(board, horizontal_kernel, 'same') == player * 4):
         is_win = True
     elif np.any(signal.convolve2d(board, diagonal_kernel, 'same') == player * 4):
         is_win = True
-    elif np.any(signal.convolve2d(board, diagonal_kernel[::-1], 'same') == player * 4):
+    elif np.any(signal.convolve2d(board, off_diagonal_kernel, 'same') == player * 4):
         is_win = True
     return is_win
 
@@ -142,7 +146,7 @@ def check_end_state(board: np.ndarray, player: BoardPiece) -> GameState:
     if connected_four(board, player):
         return GameState.IS_WIN
 
-    elif np.all(board != 0):
+    elif np.all(board != NO_PLAYER):
         return GameState.IS_DRAW
 
     else:
