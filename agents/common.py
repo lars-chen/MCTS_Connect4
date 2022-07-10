@@ -151,3 +151,13 @@ def check_end_state(board: np.ndarray, player: BoardPiece) -> GameState:
 
     else:
         return GameState.STILL_PLAYING
+
+
+def is_terminal_board(board: np.ndarray, player: BoardPiece) -> bool:
+    """
+    Returns True only if the game is over at the current state.
+    """
+    if check_end_state(board, player) != GameState.STILL_PLAYING:
+        return True
+    else:
+        return False

@@ -100,7 +100,7 @@ def heuristic(board: np.ndarray, player: BoardPiece,
     return score if maximizingPlayer else -score
 
 
-def is_terminal_board(board: np.ndarray, player: BoardPiece):
+def is_terminal_board(board: np.ndarray, player: BoardPiece) -> bool:
     """
     Returns True only if the game is over at the current state.
     """
@@ -115,7 +115,7 @@ def alphabeta(board: np.ndarray,
               depth: np.int8,
               maximizingPlayer=True,
               alpha=np.NINF,
-              beta=np.PINF):
+              beta=np.PINF) -> np.int8:
     """
     Returns the best possible action as defined by a heuristic function and checks moves at
     inner columns first and outside moves last. The minimax agent employs alpha-beta pruning 
