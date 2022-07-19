@@ -3,9 +3,9 @@ if disable_jit:
     import os
     os.environ['NUMBA_DISABLE_JIT'] = '1'
 
+from agents.common import PLAYER1, PLAYER2, NO_PLAYER, GameState, BoardPiece, SavedState, PlayerAction, check_end_state, is_terminal_board, apply_player_action
 import numpy as np
 from numba import njit
-from agents.common import PLAYER1, PLAYER2, NO_PLAYER, GameState, BoardPiece, SavedState, PlayerAction, check_end_state, is_terminal_board, apply_player_action
 from typing import Optional, Tuple
 
 
@@ -26,8 +26,11 @@ class Node():
         self.parent = parent
         self.children = {}
         self.unplayed_actions = get_valid_actions(board)
-        self.is_terminal = True if is_terminal_board(
-            board, other_player(player)) else False
+        if is_terminal_board(board, other_player(player)) or is_terminal_board(
+                board, player):
+            self.is_terminal = True
+        else:
+            self.is_terminal = False
 
         # Monte Carlo Metrics
         self.visits = 0
@@ -50,36 +53,39 @@ class MCTS(object):
     @njit()
     def get_best_action(self):
         for _ in range(self.iterations):
-            node = self.select(self.rootnode)
+            node = self.select()
             result = self.simulate(node)
             self.backpropogate(node, result)
 
         most_visits = -1
         for action in self.rootnode.children:
-            if self.rootnode.children[action].visits > most_visits:
+            child_visits = self.rootnode.children[action].visits
+            if child_visits > most_visits:
                 best_action = action
+                most_visits = child_visits
+
         return best_action
 
     @njit()
-    def select(self, node):
+    def select(self):
+        node = self.rootnode
         while not node.is_terminal:
             if len(node.unplayed_actions) == 0:
                 node = self.get_best_child(node)
             else:
-                node = self.expand(node)
+                return self.expand(node)
         return node
 
     def expand(self, node):
-        player = node.player
-        child_player = other_player(node.player)
         action = np.random.choice(node.unplayed_actions)
-        child_board = apply_player_action(node.board, action, player)
+        child_board = apply_player_action(node.board, action, node.player)
         node.unplayed_actions = node.unplayed_actions[
             node.unplayed_actions != action]
-        child_node = Node(child_board, node, child_player)
+        child_node = Node(child_board, node, other_player(node.player))
         node.children[action] = child_node
         return child_node
 
+    @njit()
     def simulate(self, node):
         board = node.board
         player = node.player
@@ -99,7 +105,7 @@ class MCTS(object):
             if other_player(node.player) == self.current_player:
                 node.wins += result
             node = node.parent
-            
+
     @njit()
     def get_best_child(self, node):
         best_score = np.NINF
@@ -112,15 +118,16 @@ class MCTS(object):
 
         return best_child
 
+
 def generate_move_mcts(
-    board: np.ndarray,
-    player: BoardPiece,
-    saved_state: Optional[SavedState],
-    iterations=1000
-) -> Tuple[PlayerAction, Optional[SavedState]]:
+        board: np.ndarray,
+        player: BoardPiece,
+        saved_state: Optional[SavedState],
+        iterations=20000) -> Tuple[PlayerAction, Optional[SavedState]]:
     """
     Runs the mcts algorithm and returns best action.
     """
     mcts_search = MCTS(iterations, player, board)
     action = mcts_search.get_best_action()
+
     return action, saved_state

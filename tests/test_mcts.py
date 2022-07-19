@@ -1,4 +1,11 @@
 from mimetypes import init
 from agents.common import *
-import numpy as np
-from agents.agent_minimax.minimax import alphabeta, generate_move_minimax, heuristic
+from agents.agent_mcts.mcts import *
+
+
+def test_other_player():  
+    assert other_player(PLAYER1) is PLAYER2
+    assert other_player(PLAYER2) is PLAYER1
+    
+    
+def 

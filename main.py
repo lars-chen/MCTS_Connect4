@@ -2,7 +2,9 @@ from typing import Callable
 from agents.common import GenMove
 from agents.agent_human_user import user_move
 from agents.agent_random.random import generate_move_random
-from agents.agent_minimax.minimax import *
+from agents.agent_minimax.minimax import generate_move_minimax
+from agents.agent_mcts.mcts import generate_move_mcts
+
 
 
 def human_vs_agent(
