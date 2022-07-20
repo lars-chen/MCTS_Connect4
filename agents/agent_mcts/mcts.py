@@ -111,7 +111,7 @@ class MCTS(object):
         best_score = np.NINF
         for child in node.children.values():
             move_score = child.wins / child.visits + self.exploration_const * np.sqrt(
-                np.log(child.visits / child.visits))
+                np.log(node.visits / child.visits))
             if move_score > best_score:
                 best_score = move_score
                 best_child = child
@@ -123,7 +123,7 @@ def generate_move_mcts(
         board: np.ndarray,
         player: BoardPiece,
         saved_state: Optional[SavedState],
-        iterations=20000) -> Tuple[PlayerAction, Optional[SavedState]]:
+        iterations=2000) -> Tuple[PlayerAction, Optional[SavedState]]:
     """
     Runs the mcts algorithm and returns best action.
     """
