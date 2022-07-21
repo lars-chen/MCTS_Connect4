@@ -1,7 +1,15 @@
+disable_jit = True
+if disable_jit:
+    import os
+
+    os.environ["NUMBA_DISABLE_JIT"] = "1"
+
 from enum import Enum
 import numpy as np
 from scipy import signal
 from typing import Callable, Optional, Tuple
+from numba import njit
+
 
 BoardPiece = np.int8  # The data type (dtype) of the board
 NO_PLAYER = BoardPiece(
@@ -115,6 +123,7 @@ def apply_player_action(board: np.ndarray, action: PlayerAction,
     return modified_board
 
 
+@njit()
 def connected_four(board: np.ndarray, player: BoardPiece) -> bool:
     """
     Returns True if there are four adjacent pieces equal to `player` arranged
