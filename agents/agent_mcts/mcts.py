@@ -156,9 +156,9 @@ class MCTS(object):
         """
         action = np.random.choice(node.unplayed_actions)
         child_board = apply_player_action(node.board, action, node.player)
-        node.unplayed_actions = node.unplayed_actions[node.unplayed_actions != action]
+        node.unplayed_actions = node.unplayed_actions[node.unplayed_actions != action]  # remove played action from node.unplayed_actions
         child_node = Node(child_board, node, other_player(node.player))
-        node.children[action] = child_node
+        node.children[action] = child_node  # expand child into node
         return child_node
 
     @njit()
@@ -186,6 +186,12 @@ class MCTS(object):
 
     @njit()
     def backpropogate(self, node, result):
+        """Update tree statistics
+
+        Args:
+            node (Node): node to backpropogate from
+            result (Int): result of random rollout
+        """
         while node is not None:
             node.visits += 1
             if other_player(node.player) == self.current_player:
